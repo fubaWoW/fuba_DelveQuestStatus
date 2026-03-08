@@ -6,7 +6,7 @@
 ## IconTexture: Interface\AddOns\fuba_DelveQuestStatus\Media\fubaLogo
 ## SavedVariables: FubaDelveQuestStatusMidnightDB
 
-## X-Curse-Project-ID: 000000
+## X-Curse-Project-ID: 1481312
 
 ## X-Category: |cffff8000fuba
 ## Category-enUS: |cffff8000fuba
