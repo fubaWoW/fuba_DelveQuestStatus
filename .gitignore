@@ -1,6 +1,3 @@
-# Compiled Lua sources
-luac.out
-
 # luarocks build files
 *.src.rock
 *.zip
@@ -39,3 +36,21 @@ luac.out
 *.x86_64
 *.hex
 
+# Windows junk
+Thumbs.db
+thumbs.db
+Desktop.ini
+desktop.ini
+
+# macOS junk
+.DS_Store
+
+# ignore .release folder
+/.release
+
+# IDE
+.vscode/
+.idea/
+
+# Libraries
+/Libs

@@ -1,0 +1,16 @@
+## Interface: 120001
+## Author: fuba
+## Version: @project-version@
+## Title: fuba's |cff0080ffDelve Quest Status|r
+## Notes: Show the Status of all Midnight Delves Quests and create a Clickable Waypoint for every Delve
+## IconTexture: Interface\AddOns\fuba_DelveQuestStatus\Media\fubaLogo
+## SavedVariables: FubaDelveQuestStatusMidnightDB
+
+## X-Curse-Project-ID: 000000
+
+## X-Category: |cffff8000fuba
+## Category-enUS: |cffff8000fuba
+## Category-deDE: |cffff8000fuba
+
+libs.xml
+core.lua
