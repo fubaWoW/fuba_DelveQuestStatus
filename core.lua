@@ -3,6 +3,7 @@ local addonName = ...
 local LDB = LibStub("LibDataBroker-1.1")
 local IconDB = LibStub("LibDBIcon-1.0")
 local minimapDB
+local wasVisibleBeforeCombat = false
 
 --------------------------------------------------
 -- Delve Quest UI (Midnight) 
@@ -510,17 +511,14 @@ end
 -- UI Visibility
 --------------------------------------------------
 
-local function ToggleUI()
-    if frame:IsShown() then
-        frame:Hide()
-    else
-        UpdateTable()
-        frame:Show()
-		frame:Raise()
-    end
-end
-
 local function ShowUI()
+	if InCombatLockdown and InCombatLockdown() then
+		-- Notify the user the UI cannot be opended during combat
+		UIErrorsFrame:AddMessage("Can not open during combat.\nWill be opended after Combat", 1, 0.3, 0.3)
+		wasVisibleBeforeCombat = true
+		return
+	end
+
     if not frame:IsShown() then
 		UpdateTable()
         frame:Show()
@@ -533,6 +531,15 @@ local function HideUI()
         frame:Hide()
     end
 end
+
+local function ToggleUI()
+    if frame:IsShown() then
+        HideUI()
+    else
+        ShowUI()
+    end
+end
+
 
 --------------------------------------------------
 -- Databroker and Minimap Icon
@@ -612,7 +619,6 @@ end
 -- Combat checks
 --------------------------------------------------
 
-local wasVisibleBeforeCombat = false
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
