@@ -9,6 +9,9 @@ on:
   push:
     tags:
       - '**'
+      
+permissions:
+  contents: write
 
 # a workflow is built up as jobs, and within these jobs are steps
 jobs:
