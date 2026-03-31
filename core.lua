@@ -10,7 +10,7 @@ local wasVisibleBeforeCombat = false
 --------------------------------------------------
 local delveQuests = {
     { id=93384, name="Delver's Call: Collegiate Calamity", map=2393, x=0.40798, y=0.54153 },
-	--	{ id=93385, name="Delver's Call: The Darkway", map=2393, x=0.39300, y=0.32100 },
+	{ id=93385, name="Delver's Call: The Darkway", map=2393, x=0.39300, y=0.32100 },
     { id=93372, name="Delver's Call: Shadow Enclave", map=2395, x=0.45458, y=0.85998 },
     { id=93409, name="Delver's Call: Atal'Aman", map=2437, x=0.24802, y=0.52947 },
     { id=93410, name="Delver's Call: Twilight Crypts", map=2437, x=0.25411, y=0.84398 },
