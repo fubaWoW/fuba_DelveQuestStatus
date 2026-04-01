@@ -18,7 +18,7 @@ local delveQuests = {
 	{ id=93421, name="Delver's Call: The Grudge Pit", map=2413, x=0.70480, y=0.64920 },    
     { id=93428, name="Delver's Call: Shadowguard Point", map=2405, x=0.37197, y=0.48999 },
 	{ id=93427, name="Delver's Call: Sunkiller Sanctum", map=2405, x=0.54802, y=0.47122 },
-	--	{ id=93386, name="Delver's Call: Parhelion Plaza", map=2424, x=0.47740, y=0.41580 },
+	{ id=93386, name="Delver's Call: Parhelion Plaza", map=2424, x=0.47740, y=0.41580 },
 }
 
 --------------------------------------------------
