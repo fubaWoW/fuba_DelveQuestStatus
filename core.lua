@@ -5,12 +5,14 @@ local IconDB = LibStub("LibDBIcon-1.0")
 local minimapDB
 local wasVisibleBeforeCombat = false
 
+local frame = CreateFrame("Frame","fuba_DelveQuestStatusMidnightFrame",UIParent,"BackdropTemplate")
+
 --------------------------------------------------
 -- Delve Quest UI (Midnight) 
 --------------------------------------------------
 local delveQuests = {
     { id=93384, name="Delver's Call: Collegiate Calamity", map=2393, x=0.40798, y=0.54153 },
-	--	{ id=93385, name="Delver's Call: The Darkway", map=2393, x=0.39300, y=0.32100 },
+	{ id=93385, name="Delver's Call: The Darkway", map=2393, x=0.39300, y=0.32100 },
     { id=93372, name="Delver's Call: Shadow Enclave", map=2395, x=0.45458, y=0.85998 },
     { id=93409, name="Delver's Call: Atal'Aman", map=2437, x=0.24802, y=0.52947 },
     { id=93410, name="Delver's Call: Twilight Crypts", map=2437, x=0.25411, y=0.84398 },
@@ -18,7 +20,7 @@ local delveQuests = {
 	{ id=93421, name="Delver's Call: The Grudge Pit", map=2413, x=0.70480, y=0.64920 },    
     { id=93428, name="Delver's Call: Shadowguard Point", map=2405, x=0.37197, y=0.48999 },
 	{ id=93427, name="Delver's Call: Sunkiller Sanctum", map=2405, x=0.54802, y=0.47122 },
-	--	{ id=93386, name="Delver's Call: Parhelion Plaza", map=2424, x=0.47740, y=0.41580 },
+	{ id=93386, name="Delver's Call: Parhelion Plaza", map=2424, x=0.47740, y=0.41580 },
 }
 
 --------------------------------------------------
@@ -340,8 +342,6 @@ end
 -- UI Frame
 --------------------------------------------------
 
-local frame = CreateFrame("Frame","fuba_DelveQuestStatusMidnightFrame",UIParent,"BackdropTemplate")
-
 frame:SetSize(frameWidth, frameHeight)
 frame:SetPoint("CENTER")
 
@@ -522,6 +522,7 @@ local function ShowUI()
     if not frame:IsShown() then
 		UpdateTable()
         frame:Show()
+		frame:SetFrameStrata("DIALOG")
 		frame:Raise()
     end
 end
