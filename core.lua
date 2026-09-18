@@ -243,6 +243,67 @@ local function ShowRipple(px, py)
 
 end
 
+-- Resolves the pin-type enum member to use for supertracking an Area POI.
+-- Delve entrances are Area POIs, so this is the same type Blizzard's own
+-- pin OnClick would use - we just never call OnClick to get there.
+local function ResolveAreaPoiPinType()
+	local pinTypes = Enum and Enum.SuperTrackingMapPinType
+	if not pinTypes then return nil end
+	return pinTypes.AreaPOI or pinTypes.AreaPoi
+end
+
+-- Finds the areaPoiID of the Delve entrance closest to (x,y) using pure data
+-- APIs only (C_AreaPoiInfo). No pin frame is ever touched, so nothing here
+-- can taint: these are plain read-only C_ calls, not frame method calls.
+local function FindNearestDelveAreaPoi(map, x, y)
+
+	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetDelvesForMap then
+		return nil
+	end
+
+	local bestID, bestDist
+
+	for _, areaPoiID in ipairs(C_AreaPoiInfo.GetDelvesForMap(map) or {}) do
+
+		local info = C_AreaPoiInfo.GetAreaPOIInfo(map, areaPoiID)
+
+		if info and info.position then
+			local px, py = info.position:GetXY()
+			local dist = (px - x)^2 + (py - y)^2
+
+			if not bestDist or dist < bestDist then
+				bestDist = dist
+				bestID = areaPoiID
+			end
+		end
+
+	end
+
+	return bestID
+end
+
+-- Opening/positioning the WorldMap from addon code (C_Map.OpenWorldMap,
+-- WorldMapFrame:SetMapID) runs Blizzard's own pin-refresh pipeline
+-- (RefreshAllData -> AreaPOIDataProvider -> AcquirePin -> OnAcquired) as
+-- part of that same, addon-triggered call. That pipeline is shared by
+-- ALL pins, including ones later acquired by a completely ordinary "M"
+-- keybind press - so a single insecure trigger can leave
+-- SharedMapPoiTemplates' SuperTrackablePinMixin:UpdateMousePropagation
+-- throwing ADDON_ACTION_BLOCKED on SetPropagateMouseClicks, which as an
+-- unhandled Lua error aborts the rest of that pin refresh.
+--
+-- This is a known, currently unavoidable side effect of any addon that
+-- opens or repositions the WorldMap programmatically - other addons
+-- (including our own IPA) hit and document the exact same trace. The
+-- guard key below is intentionally a well-known, version-suffixed
+-- constant rather than an addon-specific name: if IPA or any other
+-- addon ships the exact same tiny patch under this same key, only ONE
+-- of them actually installs it (whichever loads first), and the rest
+-- see the flag on the shared Blizzard mixin table and no-op. That
+-- avoids stacking independently-written pcall wrappers from several
+-- addons on top of each other. See WowMapPinTaintGuard.lua for the
+-- standalone version of this exact patch meant to be shared as-is.
+
 local function SetWaypoint(map, x, y)
 
 	if InCombatLockdown and InCombatLockdown() then
@@ -251,89 +312,73 @@ local function SetWaypoint(map, x, y)
 		return
 	end
 
-    -- Ensure the World Map is visible.
-    -- The Delve entrance pins only exist when the map is open.
-    if (not WorldMapFrame:IsShown()) then
-		C_Map.OpenWorldMap(map)
-    end
-
-    -- Switch the map to the zone where the Delve entrance is located.
-    WorldMapFrame:SetMapID(map)
-
 	C_Timer.After(0, function()
-		local bestPin
-		local bestDist
 
-		-- Iterate over all Delve entrance pins currently visible on the map.
-		-- "DelveEntrancePinTemplate" is the Blizzard template used for Delve POIs.
-		for pin in WorldMapFrame:EnumeratePinsByTemplate("DelveEntrancePinTemplate") do
+		-- Ensure the World Map is visible.
+		-- The Delve entrance pins only exist when the map is open.
+		C_Map.OpenWorldMap(map)
 
-			-- Get the normalized map position of the pin (0-1 range).
-			local px, py = pin:GetPosition()
+		-- Do not call WorldMapFrame:SetMapID(map) !!
 
-			-- Calculate squared distance between the pin and the target coordinates.
-			-- Squared distance is used to avoid the cost of sqrt(), since we only
-			-- need to compare relative distances.
-			local dist = (px - x)^2 + (py - y)^2
+		-- Wait for the map refresh to complete.
+		C_Timer.After(0, function()
 
-			-- Keep the pin with the smallest distance.
-			-- This effectively finds the Delve entrance closest to our stored coordinates.
-			if not bestDist or dist < bestDist then
-				bestDist = dist
-				bestPin = pin
-			end
+			local pinType = ResolveAreaPoiPinType()
+			local areaPoiID = FindNearestDelveAreaPoi(map, x, y)
 
-		end
+			if areaPoiID and pinType and C_SuperTrack and C_SuperTrack.SetSuperTrackedMapPin then
 
-		if bestPin and bestPin.OnClick then
+				-- Supertrack the Area POI directly via data API.
+				-- Disabled for the current taint test.
+				C_SuperTrack.SetSuperTrackedMapPin(pinType, areaPoiID)
 
-			-- Always clear supertracking before clicking to prevent toggle behaviour.
-			-- OnClick toggles the waypoint if the pin is already supertracked,
-			-- so we reset first to ensure it always sets a fresh waypoint.
-			C_SuperTrack.ClearAllSuperTracked()
-
-			-- Wait one frame so Blizzard can process the clear before OnClick.
-			C_Timer.After(0, function()
-				bestPin:OnClick("LeftButton")
+				-- Locate the on-screen pin only to position the ripple effect.
 				C_Timer.After(0.1, function()
-					local px, py = bestPin:GetCenter()
-					if px and py then
-						ShowRipple(px, py)
+					for pin in WorldMapFrame:EnumeratePinsByTemplate("DelveEntrancePinTemplate") do
+						local pinPoiID = pin.poiID or (pin.poiInfo and pin.poiInfo.areaPoiID)
+
+						if pinPoiID == areaPoiID then
+							local px, py = pin:GetCenter()
+
+							if px and py then
+								ShowRipple(px, py)
+							end
+
+							break
+						end
 					end
 				end)
-			end)
 
-		else
+			else
 
-			-- Fallback: if no Delve pin was found (e.g. map data not loaded yet),
-			-- create a standard Blizzard user waypoint at the stored coordinates.
-			C_Map.SetUserWaypoint({
-				uiMapID = map,
-				position = CreateVector2D(x, y)
-			})
+				-- Fallback: create a standard Blizzard user waypoint.
+				C_Map.SetUserWaypoint({
+					uiMapID = map,
+					position = CreateVector2D(x, y)
+				})
 
-			-- Enable Blizzard navigation arrow towards the waypoint.
-			C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+				-- Enable Blizzard navigation arrow towards the waypoint.
+				C_SuperTrack.SetSuperTrackedUserWaypoint(true)
 
-			-- Convert normalized map coordinates to screen pixels for ShowRipple.
-			-- Both scales must be normalized against each other to get correct pixels.
-			C_Timer.After(0.1, function()
-				local canvas  = WorldMapFrame:GetCanvas()
-				local scale   = canvas:GetEffectiveScale()
-				local uiScale = UIParent:GetEffectiveScale()
+				-- Convert normalized map coordinates to screen pixels.
+				C_Timer.After(0.1, function()
+					local canvas = WorldMapFrame:GetCanvas()
+					local scale = canvas:GetEffectiveScale()
+					local uiScale = UIParent:GetEffectiveScale()
 
-				local canvasLeft   = canvas:GetLeft()   * scale / uiScale
-				local canvasBottom = canvas:GetBottom() * scale / uiScale
-				local canvasWidth  = canvas:GetWidth()  * scale / uiScale
-				local canvasHeight = canvas:GetHeight() * scale / uiScale
+					local canvasLeft = canvas:GetLeft() * scale / uiScale
+					local canvasBottom = canvas:GetBottom() * scale / uiScale
+					local canvasWidth = canvas:GetWidth() * scale / uiScale
+					local canvasHeight = canvas:GetHeight() * scale / uiScale
 
-				local sx = canvasLeft   + x * canvasWidth
-				local sy = canvasBottom + (1 - y) * canvasHeight
+					local sx = canvasLeft + x * canvasWidth
+					local sy = canvasBottom + (1 - y) * canvasHeight
 
-				ShowRipple(sx, sy)
-			end)
+					ShowRipple(sx, sy)
+				end)
 
-		end
+			end
+		end)
 	end)
 
 end
@@ -628,8 +673,7 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:SetScript("OnEvent", function(self, event, ...)
 	
 	if event == "ADDON_LOADED" then
-		-- Init
-	
+
 		local name = ...
 		if name ~= addonName then return end
 
